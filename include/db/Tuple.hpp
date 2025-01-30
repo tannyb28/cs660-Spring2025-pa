@@ -21,9 +21,7 @@ namespace db {
     };
 
     class TupleDesc {
-        std::vector<type_t> types;
-        std::vector<size_t> offsets;
-        std::unordered_map<std::string, size_t> name_to_index;
+        // TODO pa1: add private members
 
     public:
         TupleDesc() = default;
