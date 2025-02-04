@@ -18,7 +18,19 @@ namespace db {
  */
     class BufferPool {
         // TODO pa0: add private members
-
+        // The fixed array of pages.
+        std::array<Page, DEFAULT_NUM_PAGES> pages_;
+        // Map from PageId to slot index.
+        std::unordered_map<PageId, size_t, std::hash<const PageId>> page_table_;
+        // LRU list: front is most recently used.
+        std::list<PageId> lru_list_;
+        // Map from PageId to its iterator in lru_list_.
+        std::unordered_map<PageId, std::list<PageId>::iterator, std::hash<const PageId>> lru_map_;
+        // Set of dirty pages.
+        std::unordered_set<PageId, std::hash<const PageId>> dirty_pages_;
+        // Free slots (indices into pages_).
+        std::list<size_t> free_slots_;
+        
     public:
         /**
          * @brief: Constructs a BufferPool object with the default number of pages.
