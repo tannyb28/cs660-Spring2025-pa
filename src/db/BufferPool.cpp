@@ -66,6 +66,9 @@ void BufferPool::markDirty(const PageId &pid) {
 }
 
 bool BufferPool::isDirty(const PageId &pid) const {
+    if (page_table_.find(pid) == page_table_.end()) {
+        throw std::runtime_error("PageId is not in the buffer pool");
+    }
     return dirty_pages_.find(pid) != dirty_pages_.end();
 }
 
@@ -93,6 +96,11 @@ void BufferPool::flushPage(const PageId &pid) {
     if (!contains(pid)) {
         return;
     }
+
+    if (!isDirty(pid)) {
+        return;
+    }
+
     size_t slot = page_table_.at(pid);
     Database &db = getDatabase();
     DbFile &file = db.get(pid.file);
