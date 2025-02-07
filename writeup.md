@@ -1,35 +1,108 @@
-The BufferPool class serves as a temporary memory manager for database pages by using an LRU (Least Recently Used) caching policy to manage a fixed number of pages in random memory. We made following design choices 
-Fixed-size buffer with LRU eviction - The buffer pool maintains a fixed number of pages and the pages are evicted using an LRU list (lru_list_), where recently accessed pages are moved to the front, and the least-recently-used page is evicted when space is needed.
-Optimised Lookup for pages - A hash table (page_table_) is used to quickly determine whether a page is in memory in O(N). An LRU map (lru_map_) tracks iterators in the LRU list for fast access.
-Dirty Page Tracking - An unordered set (dirty_pages_) maintains the list of modified pages, ensuring that only modified pages are written back to disk.
-Page Fetching and Eviction - If a page is requested and available in memory, it is moved to the front of the LRU list. If the page is not in memory:
-If a free slot exists, it is used.
-If no free slots exist, the last used page is evicted and written to the disk in case isDirty and replaced.
-Interaction with Database - Pages are loaded from disk via class member Database::get(), which retrieves the corresponding DbFile and are written back to disk using flushPage() and flushFile() methods
-Missing or Incomplete Elements
-Since we do not have a concurrency control in place. Our implementation might not work in case of pages added at the same time or we can say case multiple threads access the BufferPool Page 
-Currently, a page may be evicted even if it is actively in use . We should have a pinning mechanism to ensure that pinned pages are not evicted.
-Error Handling in Disk Operations file.readPage() and file.writePage() methods work on the everytime the operation will succeed. It can be resolved by exception handling should be added to detect disk failures.
+# BufferPool Writeup
 
-In total we spent around 20 hours on this assignment with Apoorva Gupta understanding the code base and debugging and Tanish Bhowmich writing the code. Overall problem statement was well structured and we were able to write code efficiently however the reasoning for variables and datatypes used in the helper code was not extensive. This confused us at times to answer why a particular step is done in the helper code otherwise it was an interesting problem statement.
-Analytical Questions
-Evicting a dirty page is more expensive than evicting a clean page. Propose a strategy to reduce the number of dirty pages that are evicted.
-Evicting a dirty page is more expensive than evicting a clean page because the dirty page must be written back to disk before eviction, incurring additional I/O overhead due to writing and taking additional memory space. We can use following ways to reduce the number of evictions
-We can do batch flushing in which a vector of fixed length will store the information of dirty pages instead of writing a single page to disc everytime encountered, here the I/O operations for disk writing will be reduced and multiple dirty pages from a group will be flushed together.
-We can have a background flushing job that will scan the buffer pool periodically for dirty pages and flush them to disk, it prevents the writing of multiple dirty pages just before eviction reducing eviction time.
-To improve the background flushing process, we can use an adaptive approach based on dirty page ratio i.e we can set a threshold for the buffer pool and if dirty page percentage let's say increases by more than 70%  we will start the flushing dirty page job before evicting them.
-With these strategies, we can significantly reduce the number of dirty pages that need to be evicted from the system, thereby improving buffer pool performance and reducing disk I/O overhead.
-The Database::remove flushes any dirty pages associated with the file before it is removed. What are the implications of leaving the pages in the buffer pool when a file is removed? Can you identify a possible bug?
-If the pages associated with a file remain in the buffer pool after the file is removed, following issues might arise
-Since the buffer pool is still containing pages from the file that no longer exist we will get dangling references. If we try to access these pages, it will lead to erroneous behaviour or crashes due to accessing invalid memory
-It will lead to stale data usage in case of new file being added with same name, the buffer pool will still reference to the old pages leading to stale or corrupted data being returned
-Since buffer pool has the information from non-existent files, it will reduce the number of available slots for the other files this will lead to memory leak in bufferpool and affect the database performance
-Based on the points discussed above we can have a possibility of pages getting flushed from the database but does not remove them from the buffer pool. To fix this we need to explicitly discard all pages from the buffer pool that belong to the removed file after flushing the dirty pages,
-When would you need to discard a page from the buffer pool without writing it back to disk?
-This can be done in following cases
-Transaction Rollback - If in a transaction a change is made on a page but later those changes are aborted, any of the made changes must be discarded. Since the changes were never committed, the page should be removed from the buffer pool without writing it to disk back again.
-Page Deletion - When a page or a set of pages is deleted, those pages should be directly removed from memory without writing back to disk. Writing them back would be unnecessary and wasteful since they are no longer available for querying.
-Corrupted or Invalid Pages -  If we detect a page in memory to be corrupt or invalid, it should be discarded without writing it to disk to prevent overwriting. This scenario might occur due to an unexpected crash, or logical inconsistencies.
-Our code handled it as the existing discardPage method correctly removes a page from memory without flushing it to disk, ensuring that pages can be discarded safely whenever required.
+## Design Choices
 
+The `BufferPool` class serves as a temporary memory manager for database pages by using an **LRU (Least Recently Used) caching policy** to manage a fixed number of pages in memory. The following design choices were made:
 
+1. **Fixed-size buffer with LRU eviction**  
+   - The buffer pool maintains a fixed number of pages.  
+   - Pages are evicted using an **LRU list (`lru_list_`)**, where recently accessed pages are moved to the front, and the least-recently-used page is evicted when space is needed.
+
+2. **Optimized Lookup for Pages**  
+   - A **hash table (`page_table_`)** is used to quickly determine whether a page is in memory in **O(1) time**.  
+   - An **LRU map (`lru_map_`)** tracks iterators in the LRU list for fast access.
+
+3. **Dirty Page Tracking**  
+   - An **unordered set (`dirty_pages_`)** maintains the list of modified pages, ensuring that only modified pages are written back to disk.
+
+4. **Page Fetching and Eviction**  
+   - If a page is requested and available in memory, it is moved to the front of the LRU list.  
+   - If the page is not in memory:
+     - If a **free slot exists**, it is used.  
+     - If **no free slots exist**, the least recently used (LRU) page is **evicted and written to disk** (if dirty) before being replaced.
+
+5. **Interaction with Database**  
+   - Pages are **loaded from disk** via `Database::get()`, which retrieves the corresponding `DbFile`.  
+   - Pages are **written back to disk** using `flushPage()` and `flushFile()` methods.
+
+---
+
+## Missing or Incomplete Elements
+
+1. **Concurrency Control**  
+   - The current implementation **lacks thread safety**, meaning multiple threads accessing the buffer pool simultaneously could cause race conditions.
+
+2. **Page Pinning Mechanism**  
+   - A page may be evicted even if it is actively in use.  
+   - A **pinning mechanism** should be implemented to ensure that pinned pages are not evicted.
+
+3. **Error Handling in Disk Operations**  
+   - `file.readPage()` and `file.writePage()` assume that disk operations always succeed.  
+   - **Exception handling** should be added to detect disk failures.
+
+---
+
+## Analytical Questions
+
+### 1. Strategy to Reduce the Number of Dirty Pages Evicted  
+
+Evicting a dirty page is **more expensive** than evicting a clean page since it must be **written back to disk** before eviction, causing additional I/O overhead. Strategies to reduce dirty page evictions:
+
+1. **Batch Flushing**  
+   - Instead of writing a dirty page **every time** it's evicted, store them in a **vector of fixed length**.  
+   - Flush multiple dirty pages together to reduce I/O operations.
+
+2. **Background Flushing Job**  
+   - Periodically **scan the buffer pool** for dirty pages and flush them before eviction.
+
+3. **Adaptive Flushing Based on Dirty Page Ratio**  
+   - Introduce a **threshold** (e.g., if more than **70%** of the buffer pool contains dirty pages, start flushing them before eviction).
+
+These strategies help in **reducing eviction time** and **improving overall database performance**.
+
+---
+
+### 2. Implications of Leaving Pages in the Buffer Pool After a File is Removed
+
+If a file is removed, but its pages remain in the buffer pool, the following issues may arise:
+
+1. **Dangling References**  
+   - The buffer pool may still contain pages from a **deleted file**, leading to crashes when accessed.
+
+2. **Stale Data Usage**  
+   - If a **new file with the same name** is added, the buffer pool might **return old data** from the deleted file.
+
+3. **Memory Leak and Reduced Performance**  
+   - The buffer pool will **hold pages of non-existent files**, reducing available slots for active pages.
+
+**Possible Bug**  
+- The `Database::remove()` function **flushes dirty pages** but **does not discard them from the buffer pool**.
+- **Fix**: After flushing, explicitly **discard all pages associated with the removed file**.
+
+---
+
+### 3. When Should a Page Be Discarded Without Writing It Back to Disk?
+
+A page should be discarded **without flushing** in the following scenarios:
+
+1. **Transaction Rollback**  
+   - If a transaction **modifies a page but is later aborted**, the changes should be discarded.
+
+2. **Page Deletion**  
+   - When a page is deleted, it should be removed from memory **without being written back to disk**.
+
+3. **Corrupt or Invalid Pages**  
+   - If a **corrupt page** is detected, it should be discarded to prevent **overwriting valid data**.
+
+**Our Code Implementation**  
+- The `discardPage()` method **correctly removes a page from memory without flushing it to disk**, ensuring safety in these scenarios.
+
+---
+
+## Time Spent on the Assignment  
+
+- **Apoorva Gupta**: Understanding the codebase and debugging  
+- **Tanish Bhowmich**: Writing the code  
+- **Total time spent**: ~20 hours  
+
+The problem statement was well-structured, and we efficiently implemented the solution. However, some **helper code lacked clear explanations for variable and datatype choices**, making it slightly confusing.
