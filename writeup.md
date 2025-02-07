@@ -1,5 +1,3 @@
-# BufferPool Writeup
-
 ## Design Choices
 
 The `BufferPool` class serves as a temporary memory manager for database pages by using an **LRU (Least Recently Used) caching policy** to manage a fixed number of pages in memory. The following design choices were made:
