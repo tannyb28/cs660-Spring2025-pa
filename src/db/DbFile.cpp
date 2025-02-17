@@ -9,19 +9,27 @@ using namespace db;
 const TupleDesc &DbFile::getTupleDesc() const { return td; }
 
 DbFile::DbFile(const std::string &name, const TupleDesc &td) : name(name), td(td) {
+    // TODO pa1: open file and initialize numPages
+    // Hint: use open, fstat
 }
 
 DbFile::~DbFile() {
+    // TODO pa1: close file
+    // Hind: use close
 }
 
 const std::string &DbFile::getName() const { return name; }
 
 void DbFile::readPage(Page &page, const size_t id) const {
     reads.push_back(id);
+    // TODO pa1: read page
+    // Hint: use pread
 }
 
 void DbFile::writePage(const Page &page, const size_t id) const {
     writes.push_back(id);
+    // TODO pa1: write page
+    // Hint: use pwrite
 }
 
 const std::vector<size_t> &DbFile::getReads() const { return reads; }
