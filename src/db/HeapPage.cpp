@@ -36,7 +36,7 @@ bool HeapPage::insertTuple(const Tuple &t) {
     for (size_t i = 0; i < capacity; i++) {
         if (empty(i)) {
             // Mark slot as used.
-            header[i / 8] |= (1 << (i % 8));
+            header[i / 8] |= (1 << (7 - (i % 8)));
             td.serialize(data + i * td.length(), t);
             return true;
         }
@@ -49,7 +49,7 @@ void HeapPage::deleteTuple(size_t slot) {
     if (slot >= capacity || empty(slot)) {
         throw std::runtime_error("Slot is empty, cannot delete tuple");
     }
-    header[slot / 8] &= ~(1 << (slot % 8));
+    header[slot / 8] &= ~(1 << (7 - (slot % 8)));
     std::memset(data + slot * td.length(), 0, td.length());
 }
 
@@ -71,5 +71,7 @@ void HeapPage::next(size_t &slot) const {
 bool HeapPage::empty(size_t slot) const {
     // TODO pa1
     if (slot >= capacity) return true;
-    return !(header[slot / 8] & (1 << (slot % 8)));
+    uint8_t byte = header[slot / 8];
+    int bitPos = 7 - (slot % 8);  // Use big-endian bit ordering.
+    return !(byte & (1 << bitPos));
 }

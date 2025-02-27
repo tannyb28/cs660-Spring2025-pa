@@ -26,16 +26,16 @@ size_t Tuple::size() const { return fields.size(); }
 const field_t &Tuple::get_field(size_t i) const { return fields.at(i); }
 
 TupleDesc::TupleDesc(const std::vector<type_t> &types, const std::vector<std::string> &names) {
-    if (types.size() != names.size()) {
+    if (types.size() != names.size())
         throw std::logic_error("Types and names must have the same length");
-    }
-    // Check for unique names.
-    std::unordered_set<std::string> nameSet;
+
+    // Ensure field names are unique.
+    std::unordered_set<std::string> uniqueNames;
     for (const auto &n : names) {
-        if (!nameSet.insert(n).second) {
+        if (!uniqueNames.insert(n).second)
             throw std::logic_error("Field names must be unique");
-        }
     }
+
     this->types = types;
     this->names = names;
     tupleLength = 0;

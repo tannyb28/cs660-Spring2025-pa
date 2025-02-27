@@ -22,17 +22,10 @@ namespace db {
 
     class TupleDesc {
         // TODO pa1: add private members
-        // The list of field types for this schema.
-        std::vector<type_t> types;
-        
-        // The list of field names for this schema.
-        std::vector<std::string> names;
-        
-        // The computed byte offset for each field in a tuple.
-        std::vector<size_t> offsets;
-        
-        // The total length in bytes required to store a tuple.
-        size_t tupleLength;
+        std::vector<type_t> types;           // List of field types.
+        std::vector<std::string> names;      // List of field names.
+        std::vector<size_t> offsets;         // Byte offsets for each field in a tuple.
+        size_t tupleLength;                  // Total length in bytes of a tuple.
 
     public:
         TupleDesc() = default;
