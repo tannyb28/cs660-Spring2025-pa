@@ -26,4 +26,15 @@ We can support variable-size fields (VARCHAR) by:
 3. Instead of writing at a fixed slot, find space at the end of the page and update the slot directory.
 4. Use the slot directory to determine where the tuple starts and its length.
 
+# Design Choices
+
+1. The code implements a heap file as a collection of pages, ensuring efficient disk management. Each page manages its own tuples and a bitmap for slot allocation.
+2. The bitmap efficiently tracks occupied and free tuple slots, reducing space overhead and the big-endian bit ordering in empty() ensures consistent byte-wise slot lookup.
+3. The design supports iterators for traversing tuples, which is useful for database query processing specially begin and end
+
+# Missing or Incomplete Elements
+1. No explicit locking or concurrency control mechanisms exist to handle concurrent access.
+2. Instead of always writing the page back to disk, a dirty flag should be introduced to minimize I/O.
+3. When searching for an empty slot in insertTuple(), a free-list mechanism could speed up allocation.
+4. Lack of a mechanism to reclaim completely empty pages, leading to potential storage waste about we discussed in the question above as well.
 
