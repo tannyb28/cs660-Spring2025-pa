@@ -8,6 +8,9 @@ namespace db {
         /// The next page number
         size_t next_leaf;
 
+        /// page ids
+        size_t page_ids;
+        
         /// The number of tuples in the page
         uint16_t size;
     };

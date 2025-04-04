@@ -7,6 +7,9 @@ namespace db {
     class BTreeFile : public DbFile {
         static constexpr size_t root_id = 0;
         size_t key_index;
+        size_t new_page_value = 1264;
+        size_t current_page_id;
+        size_t parent_page_id;
 
     public:
 
