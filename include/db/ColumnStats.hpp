@@ -9,6 +9,12 @@ namespace db {
  */
     class ColumnStats {
         // TODO pa4: add private members
+        unsigned buckets;            // total number of histogram buckets
+        int min;                     // minimum value in the domain
+        int max;                     // maximum value in the domain
+        unsigned totalCount;         // total number of values added
+        double bucketWidth;          // computed width of each bucket
+        std::vector<unsigned> histogram; // histogram buckets
 
     public:
         /**
