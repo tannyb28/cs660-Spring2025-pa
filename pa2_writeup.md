@@ -30,4 +30,26 @@ Pros:
 Considerations:
 - Need to make sure the buffer pool is managed properly to ensure pinning internal nodes doesn't starve other pages of memory.
 - Internal nodes are continuously in use for directing the search path so updates during splits and rebalancing must be handled carefully to update properly.
-- Pinning the internal nodes would provide significant performance gains for heavier workloads but this comes with higher memory utilization so there needs to be careful management of memory to support pinned internal nodes and also workload on the leaf pages. 
+- Pinning the internal nodes would provide significant performance gains for heavier workloads but this comes with higher memory utilization so there needs to be careful management of memory to support pinned internal nodes and also workload on the leaf pages.
+
+## Write Up
+
+# Design Choices
+The following design choices are made while writing this code.
+- Insertion tracks the path in top to down approach in the B+Tree this allows splits to go up to the root.
+- To manage bufferpool consistency we mark pages as dirty after every change.
+- If leaf node is full it splits itself into two copying half the tuples over.
+- For versatality and simplicityThe, the Iterator is used instead of a pointers.
+- If the root gets filled a new root gets created at the same time and does not go for lazy splitting.
+
+# Missing / Incomplete Implementations
+- Our implementation works on the assumption that the root is small initially, missing a general case when root can grow dynamically as well.
+- It does not check for errors no check for null pages or failed page fetches.
+- Actual B+Trees implementations  need locks during insertion and splits which is missing in our implementations.
+
+  ## Contributions
+  - Apoorva Gupta - Code review and debugging
+  - Tanish Bhowmick - Code written
+  It took us ~15 Hours to complete this assignment and implementation of the B+ Tree was the hardest part overall, however assignment was decently challenging and gave us a good overall learning experience.
+
+
