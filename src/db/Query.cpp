@@ -1,4 +1,5 @@
 #include <db/Query.hpp>
+#include <stdexcept>
 
 using namespace db;
 
@@ -52,6 +53,7 @@ static double toDouble(const field_t &v) {
     if (std::holds_alternative<int>(v)) return static_cast<double>(std::get<int>(v));
     if (std::holds_alternative<double>(v)) return std::get<double>(v);
     throw std::logic_error("Non-numeric field for numeric comparison");
+    return 0.0; // Unreachable, but keeps compiler happy
 }
 
 void db::projection(const DbFile &in, DbFile &out, const std::vector<std::string> &field_names) {
