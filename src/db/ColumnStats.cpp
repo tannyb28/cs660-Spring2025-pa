@@ -1,4 +1,5 @@
 #include <db/ColumnStats.hpp>
+#include <stdexcept>
 
 using namespace db;
 
@@ -87,4 +88,5 @@ size_t ColumnStats::estimateCardinality(PredicateOp op, int v) const {
             return totalCount - estimateCardinality(PredicateOp::EQ, v);
         }
     }
+    return 0; // Default case, should not be reached
 }

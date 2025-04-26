@@ -1,6 +1,7 @@
 #pragma once
 
 #include <db/Query.hpp>
+#include <vector>
 
 namespace db {
 
